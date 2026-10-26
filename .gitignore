@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# OS specific files
+.DS_Store
+._*
+Thumbs.db
+
+# Scanner output logs
+*.json
+audit_result*.txt
+scan_report*.md

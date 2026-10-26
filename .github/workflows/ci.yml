@@ -1,0 +1,41 @@
+name: Scanner Test Suite
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Test Help Display
+      run: |
+        python3 php2shell_scanner.py --help
+
+    - name: Test Version Evaluation Matrix
+      run: |
+        python3 php2shell_scanner.py --check-version 8.3.12 | grep "VULNERABLE"
+        python3 php2shell_scanner.py --check-version 8.3.36 | grep "PATCHED"
+        python3 php2shell_scanner.py --check-version 8.2.35 | grep "PATCHED"
+        python3 php2shell_scanner.py --check-version 7.4.33 | grep "EOL"
+
+    - name: Test Local Audit Mode
+      run: |
+        python3 php2shell_scanner.py --local
+
+    - name: Test JSON output mode
+      run: |
+        python3 php2shell_scanner.py --check-version 8.3.12 --json

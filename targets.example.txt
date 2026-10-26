@@ -1,0 +1,5 @@
+# Danh sách các website hoặc địa chỉ IP cần kiểm tra (mỗi dòng một URL)
+# Ví dụ:
+https://example.com
+https://httpbin.org
+# http://internal-server.local:8080
