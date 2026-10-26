@@ -39,6 +39,23 @@ class Colors:
     UNDERLINE = '\033[4m'
     RESET = '\033[0m'
 
+# Initialize ANSI Virtual Terminal Processing on Windows Command Prompt / PowerShell
+if sys.platform == "win32":
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        hStdOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+        else:
+            os.system('')
+    except Exception:
+        try:
+            os.system('')
+        except Exception:
+            pass
+
 def colorize(text: str, color: str, enable: bool = True) -> str:
     if not enable or not sys.stdout.isatty():
         return text
@@ -139,13 +156,28 @@ def find_system_php_binaries() -> List[str]:
     Search system PATH and standard directories for installed PHP binaries.
     """
     candidates = [
-        "php", "php8.5", "php8.4", "php8.3", "php8.2", "php8.1", "php8.0", "php7.4",
-        "php-fpm", "php-fpm8.5", "php-fpm8.4", "php-fpm8.3", "php-fpm8.2"
+        "php", "php.exe", "php8.5", "php8.4", "php8.3", "php8.2", "php8.1", "php8.0", "php7.4",
+        "php-fpm", "php-fpm.exe", "php-cgi", "php-cgi.exe"
     ]
     standard_paths = [
         "/usr/bin", "/usr/local/bin", "/opt/homebrew/bin", "/opt/local/bin",
         "/usr/sbin", "/usr/local/sbin", "/opt/homebrew/sbin"
     ]
+    if sys.platform == "win32":
+        standard_paths.extend([
+            r"C:\xampp\php",
+            r"C:\laragon\bin\php",
+            r"C:\php",
+            r"C:\Program Files\PHP",
+            r"C:\Program Files (x86)\PHP",
+        ])
+        laragon_php = r"C:\laragon\bin\php"
+        if os.path.isdir(laragon_php):
+            try:
+                for sub in os.listdir(laragon_php):
+                    standard_paths.append(os.path.join(laragon_php, sub))
+            except Exception:
+                pass
 
     found_bins = set()
 
@@ -206,6 +238,20 @@ def check_running_services() -> List[Dict[str, str]]:
                             "pid": parts[0] if len(parts) > 0 else "?",
                             "user": parts[1] if len(parts) > 1 else "?",
                             "command": parts[3] if len(parts) > 3 else (parts[2] if len(parts) > 2 else line.strip())
+                        })
+                        break
+        elif sys.platform == "win32":
+            proc = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            for line in proc.stdout.splitlines():
+                line_lower = line.lower()
+                for kw in keywords:
+                    if kw in line_lower:
+                        parts = [col.strip(' "') for col in line.split(',')]
+                        services.append({
+                            "keyword": kw,
+                            "pid": parts[1] if len(parts) > 1 else "?",
+                            "user": "SYSTEM/USER",
+                            "command": parts[0] if len(parts) > 0 else line.strip()
                         })
                         break
     except Exception:
@@ -433,9 +479,9 @@ def run_local_audit(use_color: bool = True) -> Dict[str, Any]:
 
     return report
 
-def run_remote_audit(target_url: str, check_info: bool, use_color: bool = True) -> Dict[str, Any]:
+def run_remote_audit(target_url: str, check_endpoints: bool = True, use_color: bool = True) -> Dict[str, Any]:
     print(colorize(f"\n[*] BẮT ĐẦU QUÉT TỪ XA TỚI TARGET: {target_url}", Colors.BOLD, use_color))
-    res = scan_remote_url(target_url, check_endpoints=check_info)
+    res = scan_remote_url(target_url, check_endpoints=check_endpoints)
 
     if not res.get("reachable"):
         print(colorize(f"[-] Không thể kết nối tới mục tiêu: {res.get('error', 'Unknown network error')}", Colors.RED, use_color))
